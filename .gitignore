@@ -1,0 +1,7 @@
+.env
+config/service_account.json
+output/
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
