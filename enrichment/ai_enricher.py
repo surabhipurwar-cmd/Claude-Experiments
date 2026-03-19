@@ -8,24 +8,51 @@ import json
 from datetime import date
 from typing import Any
 
-import anthropic
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 MODEL = "claude-sonnet-4-6"
+
+def _get_client():
+    if not _API_KEY:
+        return None
+    import anthropic
+    return anthropic.Anthropic(api_key=_API_KEY)
 
 
 # ---------------------------------------------------------------------------
 # Individual deal analysis
 # ---------------------------------------------------------------------------
 
+def _no_ai_deal(deal: dict) -> dict:
+    """Fallback when no API key is available — returns basic data from raw fields."""
+    churn = deal.get("Churn Threat", "")
+    competitor = deal.get("Competitor Pressure", "")
+    risk_flags = []
+    if churn and str(churn).lower() not in ("", "no", "none", "n/a"):
+        risk_flags.append(f"Churn Threat: {churn}")
+    if competitor and str(competitor).lower() not in ("", "no", "none", "n/a"):
+        risk_flags.append(f"Competitor Pressure: {competitor}")
+    return {
+        "summary": deal.get("Deal summary", "No summary provided."),
+        "risk_flags": risk_flags,
+        "opportunities": [],
+        "rep_context": deal.get("Deal summary", ""),
+        "assigned_to": deal.get("Deal Type", "Unknown"),
+    }
+
+
 def analyse_deal(deal: dict) -> dict:
     """
     Summarise a single deal and flag anything noteworthy.
     Returns a dict with keys: summary, risk_flags, opportunities, rep_context.
     """
+    client = _get_client()
+    if client is None:
+        return _no_ai_deal(deal)
+
     prompt = f"""You are analysing a DoorDash deal desk renegotiation request. Extract the key signal.
 
 Column reference:
@@ -73,21 +100,37 @@ Respond with valid JSON only, no markdown fences."""
 # Portfolio-level trend analysis
 # ---------------------------------------------------------------------------
 
+def _no_ai_trends(enriched_deals: list[dict], report_date: date) -> dict:
+    """Fallback trends when no API key — aggregate basic stats from raw data."""
+    from collections import Counter
+    churn_count = sum(1 for d in enriched_deals if str(d.get("Churn Threat", "")).lower() not in ("", "no", "none", "n/a"))
+    competitor_count = sum(1 for d in enriched_deals if str(d.get("Competitor Pressure", "")).lower() not in ("", "no", "none", "n/a"))
+    deal_types = Counter(d.get("Deal Type", "Other") for d in enriched_deals)
+    type_str = ", ".join(f"{k}: {v}" for k, v in deal_types.items())
+    return {
+        "executive_summary": (
+            f"{len(enriched_deals)} deals submitted on {report_date.strftime('%B %d, %Y')}. "
+            f"Deal type breakdown: {type_str}. "
+            f"{churn_count} deals with churn threat, {competitor_count} with competitor pressure. "
+            f"AI enrichment was skipped — add ANTHROPIC_API_KEY to .env for full analysis."
+        ),
+        "top_trends": [],
+        "red_flags": [f"Churn threat flagged on {churn_count} deal(s)"] if churn_count else [],
+        "wins": [],
+        "deal_type_highlights": {k: f"{v} deal(s) of this type submitted today." for k, v in deal_types.items()},
+        "recommended_actions": ["Add ANTHROPIC_API_KEY to .env to enable AI-powered analysis."],
+    }
+
+
 def analyse_trends(enriched_deals: list[dict], report_date: date) -> dict:
     """
     Takes the full day's enriched deals (with Chorus call context) and produces
     leadership-ready trend commentary.
-
-    Returns a dict with keys:
-      - executive_summary
-      - top_trends (list of trend dicts with title + detail)
-      - red_flags (list of strings)
-      - wins (list of strings)
-      - oam_highlights
-      - iam_highlights
-      - bd_highlights
-      - recommended_actions (list of strings)
     """
+    client = _get_client()
+    if client is None:
+        return _no_ai_trends(enriched_deals, report_date)
+
     # Build a compact representation to stay within token limits
     compact = []
     for d in enriched_deals:
