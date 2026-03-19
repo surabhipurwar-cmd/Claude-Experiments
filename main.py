@@ -11,13 +11,14 @@ import argparse
 import os
 import tempfile
 from datetime import date, datetime
+from typing import Optional
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-def run_pipeline(since: date | None = None) -> str:
+def run_pipeline(since: Optional[date] = None) -> str:
     """Execute the full pipeline and return the Google Drive URL of the report."""
     from ingestion.gsheet_client import fetch_all_deals, fetch_deals_since
     from ingestion.chorus_client import fetch_call_context_for_deals
