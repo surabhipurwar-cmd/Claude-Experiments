@@ -118,10 +118,10 @@ def build_report(
     stats = doc.add_paragraph()
     stats.alignment = WD_ALIGN_PARAGRAPH.CENTER
     total = len(enriched_deals)
-    oam_n = sum(1 for d in enriched_deals if "OAM" in str(d.get("assigned_to", "")).upper())
-    iam_n = sum(1 for d in enriched_deals if "IAM" in str(d.get("assigned_to", "")).upper())
-    bd_n  = sum(1 for d in enriched_deals if "BD"  in str(d.get("assigned_to", "")).upper())
-    stats.add_run(f"Total Deals: {total}  |  OAM: {oam_n}  |  IAM: {iam_n}  |  BD: {bd_n}")
+    from collections import Counter
+    type_counts = Counter(d.get("Deal Type", "Other") for d in enriched_deals)
+    breakdown = "  |  ".join(f"{k}: {v}" for k, v in type_counts.items())
+    stats.add_run(f"Total Deals: {total}  |  {breakdown}")
 
     doc.add_page_break()
 
@@ -175,21 +175,17 @@ def build_report(
     # --- Deal Detail by Team ---
     _heading(doc, "Deal Detail by Team", level=1)
 
-    oam_deals = [d for d in enriched_deals if "OAM" in str(d.get("assigned_to", "")).upper()]
-    iam_deals = [d for d in enriched_deals if "IAM" in str(d.get("assigned_to", "")).upper()]
-    bd_deals  = [d for d in enriched_deals if "BD"  in str(d.get("assigned_to", "")).upper()]
-    assigned  = set(id(d) for d in oam_deals + iam_deals + bd_deals)
-    other     = [d for d in enriched_deals if id(d) not in assigned]
+    # Group by Deal Type
+    deal_type_groups = {}
+    for d in enriched_deals:
+        dtype = d.get("Deal Type") or "Other"
+        deal_type_groups.setdefault(dtype, []).append(d)
 
-    _team_section(doc, "OAM (Outside Account Manager)", oam_deals, trends.get("oam_highlights", ""))
-    doc.add_page_break()
-    _team_section(doc, "IAM (Inside Account Manager)", iam_deals, trends.get("iam_highlights", ""))
-    doc.add_page_break()
-    _team_section(doc, "BD (Renegotiation Specialists)", bd_deals, trends.get("bd_highlights", ""))
-
-    if other:
-        doc.add_page_break()
-        _team_section(doc, "Unassigned / Other", other, "")
+    type_highlights = trends.get("deal_type_highlights", {})
+    for i, (dtype, deals) in enumerate(deal_type_groups.items()):
+        if i > 0:
+            doc.add_page_break()
+        _team_section(doc, dtype, deals, type_highlights.get(dtype, ""))
 
     # --- Save ---
     os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)

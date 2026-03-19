@@ -124,9 +124,7 @@ Analyse the full picture and return a JSON object with exactly these keys:
 - top_trends: list of objects, each with "title" (short) and "detail" (2-3 sentences). Max 5 trends.
 - red_flags: list of strings — urgent issues that need escalation today
 - wins: list of strings — positive outcomes, retention saves, or model deal structures
-- oam_highlights: 2-3 sentences on OAM deals specifically
-- iam_highlights: 2-3 sentences on IAM deals specifically
-- bd_highlights: 2-3 sentences on BD renegotiation specialist deals
+- deal_type_highlights: object where each key is a Deal Type ("Mx Retention", "[BD-A] Post-Sales Upgrade", "Mx Renewal") and value is 2-3 sentences of highlights for that group
 - recommended_actions: list of 3-5 concrete next steps for leadership
 
 Focus on signal over noise. Pull in Chorus call evidence where it strengthens a point.
@@ -146,9 +144,7 @@ Respond with valid JSON only, no markdown fences."""
             "top_trends": [],
             "red_flags": [],
             "wins": [],
-            "oam_highlights": "",
-            "iam_highlights": "",
-            "bd_highlights": "",
+            "deal_type_highlights": {},
             "recommended_actions": [],
         }
 
