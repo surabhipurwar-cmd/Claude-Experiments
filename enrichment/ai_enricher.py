@@ -26,17 +26,28 @@ def analyse_deal(deal: dict) -> dict:
     Summarise a single deal and flag anything noteworthy.
     Returns a dict with keys: summary, risk_flags, opportunities, rep_context.
     """
-    prompt = f"""You are analysing a deal desk renegotiation request. Extract the key signal.
+    prompt = f"""You are analysing a DoorDash deal desk renegotiation request. Extract the key signal.
+
+Column reference:
+- Mx Name: merchant name
+- Deal DRI: the rep/owner handling this deal
+- Current DD Partnership Status / Proposed DD Partnership Status: what's changing
+- Deal Type: type of deal (use this to infer OAM / IAM / BD team if possible)
+- Churn Threat: whether the merchant is at risk of churning
+- Competitor Pressure: whether a competitor is involved
+- [Post-Sales] Annual GMV: merchant's annual GMV on DoorDash
+- Deal summary: rep's written context for the request
+- Closure Details / Final Partnership: outcome if already closed
 
 Deal data:
 {json.dumps(deal, indent=2, default=str)}
 
 Return a JSON object with exactly these keys:
 - summary (2-3 sentence plain English summary of the deal)
-- risk_flags (list of strings — any merchant health, churn, or pricing concerns)
-- opportunities (list of strings — upsell, retention win, or process improvement angles)
-- rep_context (1 sentence on what the rep said and why it matters)
-- assigned_to (the team this is going to: OAM / IAM / BD — infer from the data)
+- risk_flags (list of strings — churn threat, competitor pressure, GMV at risk, partnership downgrades)
+- opportunities (list of strings — retention win, upsell, model deal structure angles)
+- rep_context (1 sentence summarising what the Deal DRI said in the deal summary and why it matters)
+- assigned_to (the team: OAM / IAM / BD — infer from Deal Type or deal context)
 
 Respond with valid JSON only, no markdown fences."""
 
@@ -54,7 +65,7 @@ Respond with valid JSON only, no markdown fences."""
             "risk_flags": [],
             "opportunities": [],
             "rep_context": "",
-            "assigned_to": deal.get("Assignment") or deal.get("Assigned To") or "Unknown",
+            "assigned_to": deal.get("Deal Type") or "Unknown",
         }
 
 
@@ -85,10 +96,14 @@ def analyse_trends(enriched_deals: list[dict], report_date: date) -> dict:
             if call.get("summary"):
                 chorus_snippets.append(f"  - Call '{call['title']}' ({call['date']}): {call['summary']}")
         compact.append({
-            "merchant": (
-                d.get("Merchant Name") or d.get("Account Name")
-                or d.get("Merchant") or d.get("Account") or "Unknown"
-            ),
+            "merchant": d.get("Mx Name", "Unknown"),
+            "deal_dri": d.get("Deal DRI", ""),
+            "deal_type": d.get("Deal Type", ""),
+            "churn_threat": d.get("Churn Threat", ""),
+            "competitor_pressure": d.get("Competitor Pressure", ""),
+            "annual_gmv": d.get("[Post-Sales] Annual GMV", ""),
+            "current_partnership": d.get("Current DD Partnership Status", ""),
+            "proposed_partnership": d.get("Proposed DD Partnership Status", ""),
             "rep_context": d.get("rep_context", ""),
             "ai_summary": d.get("summary", ""),
             "risk_flags": d.get("risk_flags", []),

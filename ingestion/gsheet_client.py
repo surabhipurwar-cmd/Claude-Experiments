@@ -51,31 +51,13 @@ def fetch_all_deals() -> list[dict]:
 
 def fetch_deals_since(since_date: date) -> list[dict]:
     """
-    Return only deals submitted on or after since_date.
-    Assumes a 'Timestamp' or 'Date' column in the sheet — adjust the key
-    once column names are confirmed.
+    Return deals from the sheet. The deal desk sheet does not have a submission
+    timestamp column, so all rows are returned regardless of since_date.
+    Filter downstream by Deal ID range if incremental runs are needed.
     """
     all_deals = fetch_all_deals()
-    filtered = []
-    for deal in all_deals:
-        # Try common timestamp column names
-        raw_date = deal.get("Timestamp") or deal.get("Date") or deal.get("Submitted") or ""
-        if not raw_date:
-            filtered.append(deal)  # include rows with no date rather than silently drop
-            continue
-        try:
-            parsed = datetime.strptime(str(raw_date).strip(), "%m/%d/%Y %H:%M:%S").date()
-        except ValueError:
-            try:
-                parsed = datetime.strptime(str(raw_date).strip(), "%Y-%m-%d").date()
-            except ValueError:
-                filtered.append(deal)
-                continue
-        if parsed >= since_date:
-            filtered.append(deal)
-
-    print(f"[gsheet] {len(filtered)} deals on or after {since_date}")
-    return filtered
+    print(f"[gsheet] Returning all {len(all_deals)} deals (no date column in sheet)")
+    return all_deals
 
 
 def print_columns() -> None:

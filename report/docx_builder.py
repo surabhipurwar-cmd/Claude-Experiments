@@ -46,12 +46,20 @@ def _team_section(doc: Document, team_name: str, deals: list[dict], highlight: s
         return
 
     for deal in deals:
-        merchant = (
-            deal.get("Merchant Name") or deal.get("Account Name")
-            or deal.get("Merchant") or deal.get("Account") or "Unknown Merchant"
-        )
+        merchant = deal.get("Mx Name", "Unknown Merchant")
         _heading(doc, merchant, level=3)
-        _labelled_para(doc, "Summary", deal.get("summary", ""))
+
+        _labelled_para(doc, "Deal DRI", deal.get("Deal DRI", "—"))
+        _labelled_para(doc, "Deal Type", deal.get("Deal Type", "—"))
+        _labelled_para(doc, "Annual GMV", str(deal.get("[Post-Sales] Annual GMV", "—")))
+        _labelled_para(doc, "Partnership Change",
+            f"{deal.get('Current DD Partnership Status', '?')} → {deal.get('Proposed DD Partnership Status', '?')}"
+        )
+        _labelled_para(doc, "Churn Threat", str(deal.get("Churn Threat", "—")))
+        _labelled_para(doc, "Competitor Pressure", str(deal.get("Competitor Pressure", "—")))
+        doc.add_paragraph()
+
+        _labelled_para(doc, "AI Summary", deal.get("summary", ""))
 
         if deal.get("rep_context"):
             _labelled_para(doc, "Rep Context", deal["rep_context"])
@@ -170,7 +178,8 @@ def build_report(
     oam_deals = [d for d in enriched_deals if "OAM" in str(d.get("assigned_to", "")).upper()]
     iam_deals = [d for d in enriched_deals if "IAM" in str(d.get("assigned_to", "")).upper()]
     bd_deals  = [d for d in enriched_deals if "BD"  in str(d.get("assigned_to", "")).upper()]
-    other     = [d for d in enriched_deals if d not in oam_deals + iam_deals + bd_deals]
+    assigned  = set(id(d) for d in oam_deals + iam_deals + bd_deals)
+    other     = [d for d in enriched_deals if id(d) not in assigned]
 
     _team_section(doc, "OAM (Outside Account Manager)", oam_deals, trends.get("oam_highlights", ""))
     doc.add_page_break()

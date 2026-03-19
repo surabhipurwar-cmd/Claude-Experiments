@@ -107,14 +107,7 @@ def fetch_call_context_for_deals(deals: list[dict], calls_per_merchant: int = 3)
     """
     enriched = []
     for deal in deals:
-        # Try common merchant column names — will be updated once sheet columns are confirmed
-        merchant = (
-            deal.get("Merchant Name")
-            or deal.get("Account Name")
-            or deal.get("Merchant")
-            or deal.get("Account")
-            or ""
-        )
+        merchant = deal.get("Mx Name", "")
 
         call_data = []
         if merchant:
